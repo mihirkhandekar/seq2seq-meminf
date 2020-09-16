@@ -68,32 +68,34 @@ def tokenize(lang):
     return tensor, lang_tokenizer
 
 
-def load_sated_dataset(path_inp_train, path_targ_train, path_inp_test, path_targ_test, num_examples=None):
-    inp_lang_train, targ_lang_train = create_sated_dataset(path_inp_train, path_targ_train, num_examples)
-    inp_lang_test, targ_lang_test = create_sated_dataset(path_inp_test, path_targ_test, num_examples)
+def load_sated_dataset(path_inp_train, path_targ_train, path_inp_test, path_targ_test, num_train=None, num_test=None):
+    inp_lang_train, targ_lang_train = create_sated_dataset(path_inp_train, path_targ_train, num_train)
+    inp_lang_test, targ_lang_test = create_sated_dataset(path_inp_test, path_targ_test, num_test)
 
-    num_train = len(inp_lang_train)
     inp_lang = inp_lang_train + inp_lang_test
     targ_lang = targ_lang_train + targ_lang_test
 
     input_tensor, inp_lang_tokenizer = tokenize(inp_lang)
     target_tensor, targ_lang_tokenizer = tokenize(targ_lang)
 
-    return input_tensor, target_tensor, inp_lang_tokenizer, targ_lang_tokenizer, num_train
+    return input_tensor, target_tensor, inp_lang_tokenizer, targ_lang_tokenizer
 
 
-num_examples = 1000
-input_tensor, target_tensor, inp_lang, targ_lang, num_train = load_sated_dataset(path_to_train_fr_file,
-                                                                                 path_to_train_en_file,
-                                                                                 path_to_test_fr_file,
-                                                                                 path_to_test_en_file,
-                                                                                 num_examples)
+num_train = 3000
+num_test = 1000
+input_tensor, target_tensor, inp_lang, targ_lang = load_sated_dataset(path_to_train_fr_file,
+                                                                      path_to_train_en_file,
+                                                                      path_to_test_fr_file,
+                                                                      path_to_test_en_file,
+                                                                      num_train, num_test)
 
 with open('data/sated/inp_lang.pickle', 'wb') as handle, open('data/sated/targ_lang.pickle', 'wb') as handle2:
     pickle.dump(inp_lang, handle, protocol=pickle.HIGHEST_PROTOCOL)
     pickle.dump(targ_lang, handle2, protocol=pickle.HIGHEST_PROTOCOL)
 
 max_length_targ, max_length_inp = target_tensor.shape[1], input_tensor.shape[1]
+
+print(f"max_length_targ = {max_length_targ}, max_length_inp = {max_length_inp}")
 
 input_tensor_train = input_tensor[:num_train]
 input_tensor_val = input_tensor[num_train:]
@@ -128,8 +130,8 @@ def loss_function(real, pred):
 encoder = Encoder(vocab_inp_size, BATCH_SIZE)
 decoder = Decoder(vocab_tar_size, BATCH_SIZE)
 
-checkpoint_dir = './checkpoints/training_checkpoints'
-shadow_checkpoint_dir = './checkpoints/shadow_checkpoints'
+checkpoint_dir = './checkpoints/sated/training_checkpoints'
+shadow_checkpoint_dir = './checkpoints/sated/shadow_checkpoints'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(optimizer=optimizer,
                                  encoder=encoder,
