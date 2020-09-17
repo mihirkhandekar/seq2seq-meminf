@@ -224,9 +224,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     trg_label_var = K.placeholder((None, None), dtype='float32')
 
     loss = K.sparse_categorical_crossentropy(trg_label_var, prediction, from_logits=True)
-    print(type(loss))
     loss = K.mean(K.sum(loss, axis=-1))
-    print(type(loss))
 
     optimizer = Adam(learning_rate=lr, clipnorm=5.)
 
@@ -283,5 +281,10 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
 if __name__ == '__main__':
     epochs = 20
-    train_sated_nmt(loo=None, sample_user=False, cross_domain=False, h=128, emb_h=128,
-                    num_epochs=30, num_users=300, drop_p=0.5, rnn_fn='lstm')
+    sample_user = True
+    cross_domain = False
+    num_users = 200
+    train_sated_nmt(loo=None, sample_user=sample_user,
+                    cross_domain=cross_domain, h=128, emb_h=128,
+                    num_epochs=epochs, num_users=num_users,
+                    drop_p=0.5, rnn_fn='lstm')
