@@ -22,7 +22,7 @@ SATED_TEST_USER = SATED_PATH + 'test.usr'
 
 def load_users(p=SATED_TRAIN_USER):
     users = []
-    with open(p, 'r') as f:
+    with open(p, 'r', encoding='UTF-8') as f:
         for line in f:
             users.append(line.replace('\n', ''))
     return users
@@ -30,7 +30,7 @@ def load_users(p=SATED_TRAIN_USER):
 
 def load_texts(p=SATED_TRAIN_ENG):
     texts = []
-    with open(p, 'r') as f:
+    with open(p, 'r', encoding='UTF-8') as f:
         for line in f:
             arr = ['<sos>'] + line.replace('\n', '').split(' ') + ['<eos>']
             words = []
@@ -56,7 +56,7 @@ def process_vocabs(vocabs, num_words=10000):
     if num_words is not None:
         count_pairs = count_pairs[:num_words - 1]
 
-    print(f"Count pairs (first 50): {count_pairs[:50]}")
+    print(f"Count pairs (first 50): {count_pairs[:50]}".encode('UTF-8'))
 
     words, _ = list(zip(*count_pairs))
     word_to_id = dict(zip(words, np.arange(len(words))))
