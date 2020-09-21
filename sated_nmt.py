@@ -16,6 +16,7 @@ OUTPUT_PATH = 'checkpoints/sated/output/'
 
 tf.compat.v1.disable_eager_execution()
 
+
 def group_texts_by_len(src_texts, trg_texts, bs=20):
     print("Bucketing batches")
     # Bucket samples by source sentence length
@@ -191,9 +192,9 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     #     user_src_texts, user_trg_texts, dev_src_texts, dev_trg_texts, test_src_texts, test_trg_texts,\
     #         src_vocabs, trg_vocabs = load_europarl_by_user(num_users=num_users, num_words=num_words)
     # else:
-    user_src_texts, user_trg_texts, dev_src_texts, dev_trg_texts, test_src_texts, test_trg_texts,\
-        src_vocabs, trg_vocabs = load_sated_data_by_user(num_users, num_words, sample_user=sample_user,
-                                                         user_data_ratio=user_data_ratio)
+    user_src_texts, user_trg_texts, dev_src_texts, dev_trg_texts, test_src_texts, test_trg_texts, \
+    src_vocabs, trg_vocabs = load_sated_data_by_user(num_users, num_words, sample_user=sample_user,
+                                                     user_data_ratio=user_data_ratio)
     train_src_texts, train_trg_texts = [], []
 
     users = sorted(user_src_texts.keys())
@@ -228,9 +229,10 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
     optimizer = Adam(learning_rate=lr, clipnorm=5.)
 
-    updates = optimizer.get_gradients(loss, model.trainable_weights)
+    updates = optimizer.get_updates(loss, model.trainable_weights)
 
-    train_fn = K.function(inputs=[src_input_var, trg_input_var, trg_label_var, K.learning_phase()], outputs=[loss], updates=updates)
+    train_fn = K.function(inputs=[src_input_var, trg_input_var, trg_label_var, K.learning_phase()], outputs=[loss],
+                          updates=updates)
     pred_fn = K.function(inputs=[src_input_var, trg_input_var, trg_label_var, K.learning_phase()], outputs=[loss])
 
     # pad batches to same length
@@ -242,7 +244,10 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
         trg_input = pad_texts(trg_input, trg_vocabs['<eos>'], mask=mask)
         batches.append((src_input, trg_input))
 
+    print(f"Number of batches: {len(batches)}\nFirst batch: {batches[0]}")
+
     for epoch in range(num_epochs):
+        print(f"Training epoch {epoch}...")
         np.random.shuffle(batches)
 
         for batch in batches:
@@ -280,7 +285,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
 
 if __name__ == '__main__':
-    epochs = 20
+    epochs = 3
     sample_user = True
     cross_domain = False
     num_users = 200
