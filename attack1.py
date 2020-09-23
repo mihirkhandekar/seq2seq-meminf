@@ -15,19 +15,19 @@ from train import Translate
 BATCH_SIZE = 64
 ###################################
 
-with open('data/sated/inp_lang.pickle', 'rb') as handle, open('data/sated/targ_lang.pickle', 'rb') as handle2:
+with open('data/inp_lang.pickle', 'rb') as handle, open('data/targ_lang.pickle', 'rb') as handle2:
     inp_lang = pickle.load(handle)
     targ_lang = pickle.load(handle2)
 
 
 in_train, in_train_label = np.load(
-    'data/sated/in_train.npy'), np.load('data/sated/in_train_label.npy')
+    'data/in_train.npy'), np.load('data/in_train_label.npy')
 out_train, out_train_label = np.load(
-    'data/sated/out_train.npy'), np.load('data/sated/out_train_label.npy')
+    'data/out_train.npy'), np.load('data/out_train_label.npy')
 in_test, in_test_label = np.load(
-    'data/sated/in_test.npy'), np.load('data/sated/in_test_label.npy')
+    'data/in_test.npy'), np.load('data/in_test_label.npy')
 out_test, out_test_label = np.load(
-    'data/sated/out_test.npy'), np.load('data/sated/out_test_label.npy')
+    'data/out_test.npy'), np.load('data/out_test_label.npy')
 
 vocab_inp_size = len(inp_lang.word_index)+1
 vocab_tar_size = len(targ_lang.word_index)+1
@@ -38,8 +38,7 @@ spa_eng_max_length_targ, spa_eng_max_length_inp = 11, 16
 max_length_targ, max_length_inp = 65, 67
 optimizer = tf.keras.optimizers.Adam()
 
-checkpoint_dir = './checkpoints/sated/raining_checkpoints'
-shadow_checkpoint_dir = './checkpoints/sated/shadow_checkpoints'
+checkpoint_dir = './checkpoints/training_checkpoints'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(optimizer=optimizer,
                                  encoder=encoder,
@@ -123,9 +122,9 @@ y_train = [1. for _ in range(len(in_train_indices))]
 y_train.extend([0. for _ in range(len(out_train_indices))])
 
 print("creating x_test and y_test")
-x_test = np.concatenate([in_test_indices, out_train_indices])
-y_test = [1. for _ in range(len(in_train_indices))]
-y_test.extend([0. for _ in range(len(out_train_indices))])
+x_test = np.concatenate([in_test_indices, out_test_indices])
+y_test = [1. for _ in range(len(in_test_indices))]
+y_test.extend([0. for _ in range(len(out_test_indices))])
 
 print("fitting classifier")
 clf = svm.SVC()

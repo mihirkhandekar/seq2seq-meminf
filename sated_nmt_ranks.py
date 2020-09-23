@@ -345,4 +345,4 @@ if __name__ == '__main__':
     get_target_ranks(num_users=num_users, save_probs=save_probs)
     for i in range(10):
         print(f"Getting shadow model {i} ranks...")
-        get_shadow_ranks(exp_id=i, num_users=num_users, cross_domain=cross_domain, rerun=rerun)
+        get_shadow_ranks(exp_id=i, num_users=num_users, cross_domain=cross_domain, rerun=rerun, rnn_fn='gru')

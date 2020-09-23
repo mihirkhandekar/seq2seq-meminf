@@ -31,3 +31,12 @@ In progress
 * Make usage of other format datasets easier
 * Comments, documentation
 * etc.
+
+## Misc
+
+Files adapted from https://github.com/csong27/auditing-text-generation:
+
+- `helper.py`: defines custom architecture for user level NMT
+- `load_sated.py1`: dataloading from SATED dataset
+- `sated_nmt.py`: trains target and shadow models for SATED dataset
+- `sated_nmt_ranks.py`: gets ranks for target and shadow models
