@@ -5,7 +5,7 @@ import numpy as np
 from tensorflow.keras import Model
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Input, Embedding, LSTM, Dropout, Dense, Add
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.regularizers import l2
 
 from load_sated import load_sated_data_by_user
@@ -186,7 +186,7 @@ def get_perp(user_src_data, user_trg_data, pred_fn, prop=1.0, shuffle=False):
 
 def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, emb_h=128, l2_ratio=1e-4, exp_id=0,
                     lr=0.001, batch_size=32, mask=False, drop_p=0.5, cross_domain=False, tied=False, ablation=False,
-                    sample_user=False, user_data_ratio=0., rnn_fn='lstm'):
+                    sample_user=False, user_data_ratio=0., rnn_fn='lstm', optim_fn='adam'):
     # if cross_domain:
     #     sample_user = True
     #     user_src_texts, user_trg_texts, dev_src_texts, dev_trg_texts, test_src_texts, test_trg_texts,\
@@ -199,6 +199,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
     users = sorted(user_src_texts.keys())
 
+    print("Creating dataset...")
     for i, user in enumerate(users):
         if loo is not None and i == loo:
             print("Leave user {} out".format(user))
@@ -217,6 +218,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     Vt = len(trg_vocabs)
     print(f"Source vocab len: {Vs}, Target vocab length: {Vt}")
 
+    print("Building NMT model...")
     model = build_nmt_model(Vs=Vs, Vt=Vt, mask=mask, drop_p=drop_p, h=h, demb=emb_h, tied=tied, l2_ratio=l2_ratio,
                             rnn_fn=rnn_fn)
     src_input_var, trg_input_var = model.inputs
@@ -227,7 +229,12 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     loss = K.sparse_categorical_crossentropy(trg_label_var, prediction, from_logits=True)
     loss = K.mean(K.sum(loss, axis=-1))
 
-    optimizer = Adam(learning_rate=lr, clipnorm=5.)
+    if optim_fn == 'adam':
+        optimizer = Adam(learning_rate=lr, clipnorm=5.)
+    elif optim_fn == 'mom_sgd':
+        optimizer = SGD(learning_rate=lr, momentum=0.9)
+    else:
+        raise ValueError(optim_fn)
 
     updates = optimizer.get_updates(loss, model.trainable_weights)
 
@@ -246,8 +253,9 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
     print(f"Number of batches: {len(batches)}\nFirst batch: {batches[0]}")
 
+    print("Training NMT model...")
     for epoch in range(num_epochs):
-        print(f"Training epoch {epoch}...")
+        print(f"On epoch {epoch} of training...")
         np.random.shuffle(batches)
 
         for batch in batches:
@@ -277,20 +285,49 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
     if sample_user:
         fname += '_shadow_exp{}_{}'.format(exp_id, rnn_fn)
-        np.savez(MODEL_PATH + 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users,
-                                                                   'cd' if cross_domain else ''), users)
+        np.savez(
+            MODEL_PATH + 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users, 'cd' if cross_domain else ''),
+            users
+        )
+        print(f"Shadow model {exp_id} saved to {MODEL_PATH + 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users, 'cd' if cross_domain else '')}.")
 
     model.save(MODEL_PATH + '{}_{}.h5'.format(fname, num_users))
+    print(f"Target model saved to {MODEL_PATH + '{}_{}.h5'.format(fname, num_users)}.")
     K.clear_session()
 
 
 if __name__ == '__main__':
+    # Following reproducibility info in the auditing seq2seq models paper (https://arxiv.org/pdf/1811.00513.pdf)
+    # Define hyperparameters for target model
     epochs = 30
-    sample_user = True
-    cross_domain = False
+    batch_size = 20
+    lr = 0.001
+    rnn_fn = 'lstm'
+    optim_fn = 'adam'
     num_users = 300
-    train_sated_nmt(loo=None, sample_user=sample_user,
-                    cross_domain=cross_domain, h=128, emb_h=128,
-                    num_epochs=epochs, num_users=num_users,
-                    drop_p=0.5, rnn_fn='lstm')
+    sample_user_flag = False
+    cross_domain_flag = False
 
+    print("Get target model...")
+    train_sated_nmt(exp_id=None, loo=None, sample_user=sample_user_flag,
+                    lr=lr, cross_domain=cross_domain_flag, h=128, emb_h=128,
+                    num_epochs=epochs, num_users=num_users, batch_size=batch_size,
+                    drop_p=0.5, rnn_fn=rnn_fn, optim_fn=optim_fn)
+
+    # Update hyperparameters for shadow models
+    num_shadow_models = 10
+    epochs = 50
+    batch_size = 35
+    lr = 0.01
+    rnn_fn = 'gru'
+    optim_fn = 'mom_sgd'
+    sample_user_flag = True
+    dims = list(range(64, 353, 32))
+
+    print("Get shadow models...")
+    for i in range(num_shadow_models):
+        print(f"Setting hidden/embedding dimension = {dims[i]} for shadow model {i}")
+        train_sated_nmt(exp_id=i, loo=None, sample_user=sample_user_flag,
+                        lr=lr, cross_domain=cross_domain_flag, h=dims[i], emb_h=dims[i],
+                        num_epochs=epochs, num_users=num_users, batch_size=batch_size,
+                        drop_p=0, rnn_fn=rnn_fn, optim_fn=optim_fn)
