@@ -286,7 +286,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
 
 if __name__ == '__main__':
     epochs = 30
-    sample_user = False
+    sample_user = True
     cross_domain = False
     num_users = 300
     train_sated_nmt(loo=None, sample_user=sample_user,

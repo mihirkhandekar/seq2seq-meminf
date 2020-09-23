@@ -341,6 +341,8 @@ if __name__ == '__main__':
     save_probs = False
     cross_domain = False
     rerun = True
+    print("Getting target ranks...")
     get_target_ranks(num_users=num_users, save_probs=save_probs)
     for i in range(10):
+        print(f"Getting shadow model {i} ranks...")
         get_shadow_ranks(exp_id=i, num_users=num_users, cross_domain=cross_domain, rerun=rerun)
