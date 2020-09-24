@@ -338,6 +338,7 @@ def test_vocab():
 
 if __name__ == '__main__':
     num_users = 300
+    dims = list(range(64, 353, 32))
     save_probs = False
     cross_domain = False
     rerun = True
@@ -345,4 +346,5 @@ if __name__ == '__main__':
     get_target_ranks(num_users=num_users, save_probs=save_probs)
     for i in range(10):
         print(f"Getting shadow model {i} ranks...")
-        get_shadow_ranks(exp_id=i, num_users=num_users, cross_domain=cross_domain, rerun=rerun, rnn_fn='gru')
+        get_shadow_ranks(exp_id=i, num_users=num_users, cross_domain=cross_domain,
+                         rerun=rerun, rnn_fn='gru', h=dims[i], emb_h=dims[i])
