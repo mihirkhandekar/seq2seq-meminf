@@ -4,10 +4,11 @@ import os
 import pickle
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from nltk.translate.bleu_score import sentence_bleu
 from sklearn import svm
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_curve, roc_auc_score
 
 from models import UNITS, Decoder, Encoder
 from train import Translate
@@ -131,3 +132,14 @@ clf = svm.SVC()
 clf.fit(x_train.reshape(-1, 1), y_train)
 y_pred = clf.predict(x_test.reshape(-1, 1))
 print("Attack 1 Accuracy : %.2f%%" % (100.0 * accuracy_score(y_test, y_pred)))
+
+ra_score = roc_auc_score(y_test, y_pred)
+print("Attack 1 ROC_AUC Score : %.2f%%" % (100.0 * ra_score))
+
+fpr, tpr, thresholds = roc_curve(y_test, y_pred, pos_label=1)
+plt.figure(1)
+plt.plot(fpr, tpr, label='Attack 1')
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve')
+plt.savefig('spaeng_attack1_roc_curve.png')
