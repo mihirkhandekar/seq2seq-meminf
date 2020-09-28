@@ -36,7 +36,7 @@ vocab_tar_size = len(targ_lang.word_index)+1
 encoder = Encoder(vocab_inp_size, BATCH_SIZE)
 decoder = Decoder(vocab_tar_size, BATCH_SIZE)
 spa_eng_max_length_targ, spa_eng_max_length_inp = 11, 16
-max_length_targ, max_length_inp = 65, 67
+max_length_targ, max_length_inp = 11, 16    # 65, 67
 optimizer = tf.keras.optimizers.Adam()
 
 checkpoint_dir = './checkpoints/training_checkpoints'
@@ -115,7 +115,7 @@ for ten, tar in zip(out_test, out_test_label):
         break
     tr, pred_probs = translator.translate(ten, True)
     indices = translate_and_get_indices(tr, tar, pred_probs)
-    out_train_indices.append(np.mean(indices))
+    out_test_indices.append(np.mean(indices))
 
 print("creating x_train and y_train")
 x_train = np.concatenate([in_train_indices, out_train_indices])
