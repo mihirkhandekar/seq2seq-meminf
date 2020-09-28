@@ -89,7 +89,7 @@ input_tensor, target_tensor, inp_lang, targ_lang = load_sated_dataset(path_to_tr
                                                                       path_to_test_en_file,
                                                                       num_train, num_test)
 
-with open('data/sated/inp_lang.pickle', 'wb') as handle, open('data/sated/targ_lang.pickle', 'wb') as handle2:
+with open('data/satedrecord/inp_lang.pickle', 'wb') as handle, open('data/satedrecord/targ_lang.pickle', 'wb') as handle2:
     pickle.dump(inp_lang, handle, protocol=pickle.HIGHEST_PROTOCOL)
     pickle.dump(targ_lang, handle2, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -130,8 +130,8 @@ def loss_function(real, pred):
 encoder = Encoder(vocab_inp_size, BATCH_SIZE)
 decoder = Decoder(vocab_tar_size, BATCH_SIZE)
 
-checkpoint_dir = './checkpoints/sated/training_checkpoints'
-shadow_checkpoint_dir = './checkpoints/sated/shadow_checkpoints'
+checkpoint_dir = './checkpoints/satedrecord/training_checkpoints'
+shadow_checkpoint_dir = './checkpoints/satedrecord/shadow_checkpoints'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(optimizer=optimizer,
                                  encoder=encoder,
@@ -173,11 +173,11 @@ in_test_label = target_tensor_train[int(ATTACKER_KNOWLEDGE_RATIO * minimum):]
 out_test = input_tensor_val[int(ATTACKER_KNOWLEDGE_RATIO * minimum):]
 out_test_label = target_tensor_val[int(ATTACKER_KNOWLEDGE_RATIO * minimum):]
 
-np.save('data/sated/in_train.npy', in_train)
-np.save('data/sated/out_train.npy', out_train)
-np.save('data/sated/in_test.npy', in_test)
-np.save('data/sated/out_test.npy', out_test)
-np.save('data/sated/in_train_label.npy', in_train_label)
-np.save('data/sated/out_train_label.npy', out_train_label)
-np.save('data/sated/in_test_label.npy', in_test_label)
-np.save('data/sated/out_test_label.npy', out_test_label)
+np.save('data/satedrecord/in_train.npy', in_train)
+np.save('data/satedrecord/out_train.npy', out_train)
+np.save('data/satedrecord/in_test.npy', in_test)
+np.save('data/satedrecord/out_test.npy', out_test)
+np.save('data/satedrecord/in_train_label.npy', in_train_label)
+np.save('data/satedrecord/out_train_label.npy', out_train_label)
+np.save('data/satedrecord/in_test_label.npy', in_test_label)
+np.save('data/satedrecord/out_test_label.npy', out_test_label)
