@@ -5,8 +5,10 @@ from itertools import chain
 
 import tensorflow.keras.backend as K
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, Normalizer
-from sklearn.metrics import classification_report, accuracy_score, roc_auc_score, precision_recall_fscore_support
+from sklearn.metrics import classification_report, accuracy_score, roc_auc_score, precision_recall_fscore_support, \
+    roc_curve
 from sklearn.svm import SVC, LinearSVC
 
 from helper import flatten_data
@@ -28,8 +30,12 @@ def histogram_feats(ranks, bins=100, top_words=5000, num_words=5000, relative=Fa
     return feats
 
 
-def avg_rank_histogram_feats(histogram_feats):
-    return []
+def avg_rank_feats(ranks):
+    avg_ranks = []
+    for r in ranks:
+        avg = np.mean(np.concatenate(r))
+        avg_ranks.append(avg)
+    return avg_ranks
 
 
 def sample_with_ratio(a, b, heldout_ratio=0.5):
@@ -71,7 +77,7 @@ def load_ranks_by_label(save_dir, num_users=5000, cross_domain=False, label=1):
     for i in range(num_users):
         save_path = save_dir + 'rank_u{}_y{}{}.npz'.format(i, label, '_cd' if cross_domain else '')
         if os.path.exists(save_path):
-            f = np.load(save_path)
+            f = np.load(save_path, allow_pickle=True)
             train_rs, train_ls = f['arr_0'], f['arr_1']
             ranks.append(train_rs)
             labels.append(train_ls)
@@ -87,15 +93,15 @@ def load_all_ranks(save_dir, num_users=5000, cross_domain=False):
 
     train_label = 1
     train_ranks, train_labels, train_y = load_ranks_by_label(save_dir, num_users, cross_domain, train_label)
-    ranks.append(train_ranks)
-    labels.append(train_labels)
-    y.append(train_y)
+    ranks = ranks + train_ranks
+    labels = labels + train_labels
+    y = y + train_y
 
     test_label = 0
     test_ranks, test_labels, test_y = load_ranks_by_label(save_dir, num_users, cross_domain, test_label)
-    ranks.append(test_ranks)
-    labels.append(test_labels)
-    y.append(test_y)
+    ranks = ranks + test_ranks
+    labels = labels + test_labels
+    y = y + test_y
 
     return ranks, labels, np.asarray(y)
 
@@ -178,7 +184,7 @@ def run_attack1(num_users=5000, dim=100, prop=1.0, user_data_ratio=0., attacker_
         train_ranks, train_labels, train_y = load_ranks_by_label(save_dir, num_users, label=1)
         test_ranks, test_labels, test_y = load_ranks_by_label(save_dir, num_users, label=0)
 
-        # Split dataset into in/out
+        # Split into in/out to train classifier
         minimum = min(len(train_ranks), len(test_ranks))
         knowledge_prop = int(attacker_knowledge * minimum)
         in_train_ranks, in_train_labels, in_train_y = train_ranks[:knowledge_prop], train_labels[:knowledge_prop], \
@@ -190,53 +196,52 @@ def run_attack1(num_users=5000, dim=100, prop=1.0, user_data_ratio=0., attacker_
         out_test_ranks, out_test_labels, out_test_y = test_ranks[knowledge_prop:], test_labels[knowledge_prop:], \
                                                       test_y[knowledge_prop:]
 
-        # Convert to average rank histogram features
-        # TODO: complete avg_rank_hist function
-        in_train_feat = avg_rank_histogram_feats(ranks_to_feats(in_train_ranks, prop=prop, dim=dim, top_words=top_words,
-                                                                user_data_ratio=user_data_ratio, num_words=num_words,
-                                                                labels=in_train_labels, rare=rare, relative=relative,
-                                                                heldout_ratio=heldout_ratio))
-        in_test_feat = avg_rank_histogram_feats(ranks_to_feats(in_test_ranks, prop=prop, dim=dim, top_words=top_words,
-                                                               user_data_ratio=user_data_ratio, num_words=num_words,
-                                                               labels=in_test_labels,
-                                                               rare=rare, relative=relative,
-                                                               heldout_ratio=heldout_ratio))
-        out_train_feat = avg_rank_histogram_feats(
-            ranks_to_feats(out_train_ranks, prop=prop, dim=dim, top_words=top_words,
-                           user_data_ratio=user_data_ratio, num_words=num_words, labels=out_train_labels,
-                           rare=rare, relative=relative, heldout_ratio=heldout_ratio))
-        out_test_feat = avg_rank_histogram_feats(ranks_to_feats(out_test_ranks, prop=prop, dim=dim, top_words=top_words,
-                                                                user_data_ratio=user_data_ratio, num_words=num_words,
-                                                                labels=out_test_labels,
-                                                                rare=rare, relative=relative,
-                                                                heldout_ratio=heldout_ratio))
+        # Convert to average rank features
+        in_train_feat = avg_rank_feats(in_train_ranks)
+        in_test_feat = avg_rank_feats(in_test_ranks)
+        out_train_feat = avg_rank_feats(out_train_ranks)
+        out_test_feat = avg_rank_feats(out_test_ranks)
 
+        # Create dataset
         X_train, y_train = np.concatenate([in_train_feat, out_train_feat]), np.concatenate([in_train_y, out_train_y])
         X_test, y_test = np.concatenate([in_test_feat, out_test_feat]), np.concatenate([in_test_y, out_test_y])
         np.savez(attack1_results_save_path, X_train, y_train, X_test, y_test)
 
     print(X_train.shape, y_train.shape)
+    print(X_test.shape, y_test.shape)
 
-    clf = SVC(verbose=1)
+    clf = SVC()
     clf.fit(X_train.reshape(-1, 1), y_train)
     y_pred = clf.predict(X_test.reshape(-1, 1))
     print("Attack 1 Accuracy : %.2f%%" % (100.0 * accuracy_score(y_test, y_pred)))
+
+    ra_score = roc_auc_score(y_test, y_pred)
+    print("Attack 1 ROC_AUC Score : %.2f%%" % (100.0 * ra_score))
+
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred, pos_label=1)
+    plt.figure(1)
+    plt.plot(fpr, tpr, label='Attack 1')
+    plt.xlabel('False positive rate')
+    plt.ylabel('True positive rate')
+    plt.title('ROC curve')
+    plt.savefig('sateduser_attack1_roc_curve.png')
 
 
 # Attack 2: Shadow Models on Rank Histograms
 def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.,
                 heldout_ratio=0., num_words=5000, top_words=5000, relative=False, rare=False, norm=True,
                 scale=True, cross_domain=False, rerun=False):
+
     result_path = OUTPUT_PATH
 
     if dim > top_words:
         dim = top_words
 
-    attack2_results_save_path = result_path + 'mi_data_dim{}_prop{}_{}{}_attack2.npz'.format(
+    audit_save_path = result_path + 'mi_data_dim{}_prop{}_{}{}.npz'.format(
         dim, prop, num_users, '_cd' if cross_domain else '')
 
-    if not rerun and os.path.exists(attack2_results_save_path):
-        f = np.load(attack2_results_save_path)
+    if not rerun and os.path.exists(audit_save_path):
+        f = np.load(audit_save_path, allow_pickle=True)
         X_train, y_train, X_test, y_test = [f['arr_{}'.format(i)] for i in range(4)]
     else:
         save_dir = result_path + 'target_{}{}/'.format(num_users, '_dr' if 0. < user_data_ratio < 1. else '')
@@ -256,9 +261,10 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
 
         X_train = np.vstack(X_train)
         y_train = np.concatenate(y_train)
-        np.savez(attack2_results_save_path, X_train, y_train, X_test, y_test)
+        np.savez(audit_save_path, X_train, y_train, X_test, y_test)
 
     print(X_train.shape, y_train.shape)
+    print(X_test.shape, y_test.shape)
 
     if norm:
         normalizer = Normalizer(norm='l2')
@@ -270,7 +276,7 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
 
-    clf = LinearSVC(verbose=1)
+    clf = LinearSVC()
     clf.fit(X_train, y_train)
 
     y_pred = clf.predict(X_test)
@@ -284,7 +290,19 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
     pre = pres[1]
     rec = recs[1]
 
-    print('Attack 2 precision={}, recall={}, acc={}, auc={}'.format(pre, rec, acc, auc))
+    print('precision={}, recall={}, acc={}, auc={}'.format(pre, rec, acc, auc))
+
+    ra_score = roc_auc_score(y_test, y_pred)
+    print("Attack 1 ROC_AUC Score : %.2f%%" % (100.0 * ra_score))
+
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred, pos_label=1)
+    plt.figure(2)
+    plt.plot(fpr, tpr, label='Attack 2')
+    plt.xlabel('False positive rate')
+    plt.ylabel('True positive rate')
+    plt.title('ROC curve')
+    plt.savefig('sateduser_attack2_roc_curve.png')
+
     return acc, auc, pre, rec
 
 
@@ -294,16 +312,21 @@ def run_attack3():
 
 
 if __name__ == '__main__':
-    num_shadow_models = 10
+    num_shadow_models = 4
     num_users = 300
     cross_domain_flag = False
-    attacker_knowledge_ratio = 0.5
+    attacker_knowledge_ratio = 0.1
 
     # attacker knowledge = 50%
     run_attack1(num_users=num_users,
-                attacker_knowledge=attacker_knowledge_ratio)
+                attacker_knowledge=attacker_knowledge_ratio,
+                rerun=True)
 
-    # 10 shadow models, 300 users
-    run_attack2(num_exp=num_shadow_models,
-                num_users=num_users,
-                cross_domain=cross_domain_flag)
+    print("....................................................................................................")
+
+    # 4 shadow models, 300 users
+    acc, auc, pre, rec = run_attack2(num_exp=num_shadow_models,
+                                     num_users=num_users,
+                                     cross_domain=cross_domain_flag,
+                                     rerun=True)
+
