@@ -5,10 +5,11 @@ import pickle
 import time
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from nltk.translate.bleu_score import sentence_bleu
 from sklearn import svm
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
 from shadow_model import SHADOW_UNITS, ShadowDecoder, ShadowEncoder
 from train import Train, Translate
@@ -16,21 +17,21 @@ from train import Train, Translate
 NUM_SHADOW_MODELS = 4
 BATCH_SIZE = 128
 EPOCHS = 15
-shadow_checkpoint_dir = './checkpoints/shadow_checkpoints'
+shadow_checkpoint_dir = './checkpoints/satedrecord/shadow_checkpoints'
 
-with open('data/inp_lang.pickle', 'rb') as handle, open('data/targ_lang.pickle', 'rb') as handle2:
+with open('data/satedrecord/inp_lang.pickle', 'rb') as handle, open('data/satedrecord/targ_lang.pickle', 'rb') as handle2:
     inp_lang = pickle.load(handle)
     targ_lang = pickle.load(handle2)
 
 
 in_train, in_train_label = np.load(
-    'data/in_train.npy'), np.load('data/in_train_label.npy')
+    'data/satedrecord/in_train.npy'), np.load('data/satedrecord/in_train_label.npy')
 out_train, out_train_label = np.load(
-    'data/out_train.npy'), np.load('data/out_train_label.npy')
+    'data/satedrecord/out_train.npy'), np.load('data/satedrecord/out_train_label.npy')
 in_test, in_test_label = np.load(
-    'data/in_test.npy'), np.load('data/in_test_label.npy')
+    'data/satedrecord/in_test.npy'), np.load('data/satedrecord/in_test_label.npy')
 out_test, out_test_label = np.load(
-    'data/out_test.npy'), np.load('data/out_test_label.npy')
+    'data/satedrecord/out_test.npy'), np.load('data/satedrecord/out_test_label.npy')
 
 print(in_train.shape, in_train_label.shape,
       out_train.shape, out_train_label.shape)
@@ -39,7 +40,7 @@ BUFFER_SIZE = len(in_train)
 
 vocab_inp_size = len(inp_lang.word_index)+1
 vocab_tar_size = len(targ_lang.word_index)+1
-max_length_targ, max_length_inp = 11, 16
+max_length_targ, max_length_inp = 65, 67
 
 minimum = min(len(in_train), len(out_train))
 
@@ -219,3 +220,14 @@ y_pred = np.mean(y_preds, axis=0) > 0.5
 print(y_pred.shape, np.array(y_test).shape)
 
 print("Attack 2 Accuracy : %.2f%%" % (100.0 * accuracy_score(y_test, y_pred)))
+
+ra_score = roc_auc_score(y_test, y_pred)
+print("Attack 2 ROC_AUC Score : %.2f%%" % (100.0 * ra_score))
+
+fpr, tpr, thresholds = roc_curve(y_test, y_pred, pos_label=1)
+plt.figure(1)
+plt.plot(fpr, tpr, label='Attack 2')
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve')
+plt.savefig('satedrecord_attack2_roc_curve.png')

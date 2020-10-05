@@ -1,4 +1,4 @@
-# Approximation Attack 2 : Shadow Models on Scores
+# Approximation Attack 3 : Shadow Models on Scores
 
 import numpy as np
 import tensorflow as tf
@@ -60,4 +60,4 @@ y_pred = np.mean(y_preds, axis=0) > 0.5
 
 print(y_pred.shape, np.array(y_test).shape)
 
-print("Attack 2 Accuracy : %.2f%%" % (100.0 * accuracy_score(y_test, y_pred)))
+print("Attack 3 Accuracy : %.2f%%" % (100.0 * accuracy_score(y_test, y_pred)))
