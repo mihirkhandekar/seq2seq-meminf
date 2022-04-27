@@ -37,9 +37,7 @@ def group_texts_by_len(src_texts, trg_texts, bs=20):
 
 def build_nmt_model(Vs, Vt, demb=128, h=128, drop_p=0.5, tied=True, mask=True, attn=True, l2_ratio=1e-4,
                     training=None, rnn_fn='lstm'):
-    if rnn_fn == 'lstm':
-        rnn = LSTM
-    elif rnn_fn == 'gru':
+    if rnn_fn in ['lstm', 'gru']:
         rnn = LSTM
     else:
         raise ValueError(rnn_fn)
@@ -101,8 +99,7 @@ def build_nmt_model(Vs, Vt, demb=128, h=128, drop_p=0.5, tied=True, mask=True, a
 
         final_outputs = Add(name='final_outputs')([final_outputs, contexts_outputs])
 
-    model = Model(inputs=[encoder_input, decoder_input], outputs=[final_outputs])
-    return model
+    return Model(inputs=[encoder_input, decoder_input], outputs=[final_outputs])
 
 
 def build_inference_decoder(mask=False, demb=128, h=128, Vt=5000, tied=True, attn=True):
@@ -202,7 +199,7 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     print("Creating dataset...")
     for i, user in enumerate(users):
         if loo is not None and i == loo:
-            print("Leave user {} out".format(user))
+            print(f"Leave user {user} out")
             continue
         train_src_texts += user_src_texts[user]
         train_trg_texts += user_trg_texts[user]
@@ -212,7 +209,10 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     dev_src_texts = words_to_indices(dev_src_texts, src_vocabs, mask=mask)
     dev_trg_texts = words_to_indices(dev_trg_texts, trg_vocabs, mask=mask)
 
-    print("Num train data {}, num test data {}".format(len(train_src_texts), len(dev_src_texts)))
+    print(
+        f"Num train data {len(train_src_texts)}, num test data {len(dev_src_texts)}"
+    )
+
 
     Vs = len(src_vocabs)
     Vt = len(trg_vocabs)
@@ -275,24 +275,29 @@ def train_sated_nmt(loo=0, num_users=200, num_words=5000, num_epochs=20, h=128, 
     # if cross_domain:
     #     fname = 'europal_nmt{}'.format('' if loo is None else loo)
     # else:
-    fname = 'sated_nmt{}'.format('' if loo is None else loo)
+    fname = f"sated_nmt{'' if loo is None else loo}"
 
     if ablation:
-        fname = 'ablation_' + fname
+        fname = f'ablation_{fname}'
 
     if 0. < user_data_ratio < 1.:
-        fname += '_dr{}'.format(user_data_ratio)
+        fname += f'_dr{user_data_ratio}'
 
     if sample_user:
-        fname += '_shadow_exp{}_{}'.format(exp_id, rnn_fn)
+        fname += f'_shadow_exp{exp_id}_{rnn_fn}'
         np.savez(
-            MODEL_PATH + 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users, 'cd' if cross_domain else ''),
-            users
+            MODEL_PATH
+            + f"shadow_users{exp_id}_{rnn_fn}_{num_users}_{'cd' if cross_domain else ''}.npz",
+            users,
         )
-        print(f"Shadow model {exp_id} saved to {MODEL_PATH + 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users, 'cd' if cross_domain else '')}.")
 
-    model.save(MODEL_PATH + '{}_{}.h5'.format(fname, num_users))
-    print(f"Target model saved to {MODEL_PATH + '{}_{}.h5'.format(fname, num_users)}.")
+        print(
+            f"""Shadow model {exp_id} saved to {MODEL_PATH + f"shadow_users{exp_id}_{rnn_fn}_{num_users}_{'cd' if cross_domain else ''}.npz"}."""
+        )
+
+
+    model.save(MODEL_PATH + f'{fname}_{num_users}.h5')
+    print(f"Target model saved to {MODEL_PATH + f'{fname}_{num_users}.h5'}.")
     K.clear_session()
 
 

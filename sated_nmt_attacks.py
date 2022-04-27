@@ -75,7 +75,7 @@ def load_ranks_by_label(save_dir, num_users=5000, cross_domain=False, label=1):
     labels = []
     y = []
     for i in range(num_users):
-        save_path = save_dir + 'rank_u{}_y{}{}.npz'.format(i, label, '_cd' if cross_domain else '')
+        save_path = save_dir + f"rank_u{i}_y{label}{'_cd' if cross_domain else ''}.npz"
         if os.path.exists(save_path):
             f = np.load(save_path, allow_pickle=True)
             train_rs, train_ls = f['arr_0'], f['arr_1']
@@ -93,15 +93,15 @@ def load_all_ranks(save_dir, num_users=5000, cross_domain=False):
 
     train_label = 1
     train_ranks, train_labels, train_y = load_ranks_by_label(save_dir, num_users, cross_domain, train_label)
-    ranks = ranks + train_ranks
-    labels = labels + train_labels
-    y = y + train_y
+    ranks += train_ranks
+    labels += train_labels
+    y += train_y
 
     test_label = 0
     test_ranks, test_labels, test_y = load_ranks_by_label(save_dir, num_users, cross_domain, test_label)
-    ranks = ranks + test_ranks
+    ranks += test_ranks
     labels = labels + test_labels
-    y = y + test_y
+    y += test_y
 
     return ranks, labels, np.asarray(y)
 
@@ -133,8 +133,7 @@ def ranks_to_feats(ranks, labels=None, prop=1.0, dim=100, num_words=5000, top_wo
             train_l = int(l * user_data_ratio)
             train_ranks = user_ranks[:train_l]
             heldout_ranks = user_ranks[train_l:]
-            for rank in sample_with_ratio(train_ranks, heldout_ranks, heldout_ratio):
-                r.append(rank)
+            r.extend(iter(sample_with_ratio(train_ranks, heldout_ranks, heldout_ratio)))
         else:
             if shuffle:
                 np.random.seed(None)
@@ -173,14 +172,21 @@ def run_attack1(num_users=5000, dim=100, prop=1.0, user_data_ratio=0., attacker_
     if dim > top_words:
         dim = top_words
 
-    attack1_results_save_path = result_path + 'mi_data_dim{}_prop{}_{}{}_attack1.npz'.format(
-        dim, prop, num_users, '_cd' if cross_domain else '')
+    attack1_results_save_path = (
+        result_path
+        + f"mi_data_dim{dim}_prop{prop}_{num_users}{'_cd' if cross_domain else ''}_attack1.npz"
+    )
+
 
     if not rerun and os.path.exists(attack1_results_save_path):
         f = np.load(attack1_results_save_path)
-        X_train, y_train, X_test, y_test = [f['arr_{}'.format(i)] for i in range(4)]
+        X_train, y_train, X_test, y_test = [f[f'arr_{i}'] for i in range(4)]
     else:
-        save_dir = result_path + 'target_{}{}/'.format(num_users, '_dr' if 0. < user_data_ratio < 1. else '')
+        save_dir = (
+            result_path
+            + f"target_{num_users}{'_dr' if 0. < user_data_ratio < 1. else ''}/"
+        )
+
         train_ranks, train_labels, train_y = load_ranks_by_label(save_dir, num_users, label=1)
         test_ranks, test_labels, test_y = load_ranks_by_label(save_dir, num_users, label=0)
 
@@ -237,14 +243,21 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
     if dim > top_words:
         dim = top_words
 
-    audit_save_path = result_path + 'mi_data_dim{}_prop{}_{}{}.npz'.format(
-        dim, prop, num_users, '_cd' if cross_domain else '')
+    audit_save_path = (
+        result_path
+        + f"mi_data_dim{dim}_prop{prop}_{num_users}{'_cd' if cross_domain else ''}.npz"
+    )
+
 
     if not rerun and os.path.exists(audit_save_path):
         f = np.load(audit_save_path, allow_pickle=True)
-        X_train, y_train, X_test, y_test = [f['arr_{}'.format(i)] for i in range(4)]
+        X_train, y_train, X_test, y_test = [f[f'arr_{i}'] for i in range(4)]
     else:
-        save_dir = result_path + 'target_{}{}/'.format(num_users, '_dr' if 0. < user_data_ratio < 1. else '')
+        save_dir = (
+            result_path
+            + f"target_{num_users}{'_dr' if 0. < user_data_ratio < 1. else ''}/"
+        )
+
         ranks, labels, y_test = load_all_ranks(save_dir, num_users)
         X_test = ranks_to_feats(ranks, prop=prop, dim=dim, top_words=top_words, user_data_ratio=user_data_ratio,
                                 num_words=num_words, labels=labels, rare=rare, relative=relative,
@@ -252,7 +265,7 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
 
         X_train, y_train = [], []
         for exp_id in range(num_exp):
-            save_dir = result_path + 'shadow_exp{}_{}/'.format(exp_id, num_users)
+            save_dir = result_path + f'shadow_exp{exp_id}_{num_users}/'
             ranks, labels, y = load_all_ranks(save_dir, num_users, cross_domain=cross_domain)
             feats = ranks_to_feats(ranks, prop=prop, dim=dim, top_words=top_words, relative=relative,
                                    num_words=num_words, labels=labels)
@@ -290,7 +303,7 @@ def run_attack2(num_exp=5, num_users=5000, dim=100, prop=1.0, user_data_ratio=0.
     pre = pres[1]
     rec = recs[1]
 
-    print('precision={}, recall={}, acc={}, auc={}'.format(pre, rec, acc, auc))
+    print(f'precision={pre}, recall={rec}, acc={acc}, auc={auc}')
 
     ra_score = roc_auc_score(y_test, y_pred)
     print("Attack 1 ROC_AUC Score : %.2f%%" % (100.0 * ra_score))

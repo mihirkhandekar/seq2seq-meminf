@@ -37,7 +37,7 @@ def preprocess_sated_sentence(w):
     w = re.sub(r'[" "]+', " ", w)
     w = re.sub(r"[^a-zA-Z?.!,¿]+", " ", w)
     w = w.strip()
-    w = '<start> ' + w + ' <end>'
+    w = f'<start> {w} <end>'
     return w
 
 

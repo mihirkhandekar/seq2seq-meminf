@@ -50,10 +50,7 @@ minimum = min(len(in_train), len(out_train))
 
 
 def translate_and_get_indices(tr, tar, pred_probs):
-    res = ''
-    for word in tar:
-        if word != 0:
-            res += targ_lang.index_word[word] + ' '
+    res = ''.join(f'{targ_lang.index_word[word]} ' for word in tar if word != 0)
     res = res.split(' ', 1)[1]
 
     ### score = sentence_bleu([tr.split()], res.split())

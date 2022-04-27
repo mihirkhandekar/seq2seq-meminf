@@ -21,15 +21,15 @@ def get_model(input_dim):
                            bias_initializer="zeros", activation='sigmoid'))
     return model
 
-t = np.load('data/train_pred_probs{}.npy'.format(0))
+t = np.load('data/train_pred_probs0.npy')
 model = get_model(t.shape[-1])
 print(model.summary())
 
 y_preds = []
 for i in range(SHADOW_MODELS):
     print('Shadow model', i)
-    t = np.load('data/train_pred_probs{}.npy'.format(i))
-    v = np.load('data/val_pred_probs{}.npy'.format(i))
+    t = np.load(f'data/train_pred_probs{i}.npy')
+    v = np.load(f'data/val_pred_probs{i}.npy')
 
     print(t.shape, v.shape)
 
@@ -40,7 +40,7 @@ for i in range(SHADOW_MODELS):
     y.extend([0. for _ in range(len(v))])
 
     y = np.array(y)
-    
+
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.3)
 

@@ -4,15 +4,15 @@ from itertools import chain
 
 
 SATED_PATH = 'sated-release-0.9.0/en-fr/'
-SATED_TRAIN_ENG = SATED_PATH + 'train.en'
-SATED_TRAIN_FR = SATED_PATH + 'train.fr'
-SATED_TRAIN_USER = SATED_PATH + 'train.usr'
-SATED_DEV_ENG = SATED_PATH + 'dev.en'
-SATED_DEV_FR = SATED_PATH + 'dev.fr'
-SATED_DEV_USER = SATED_PATH + 'dev.usr'
-SATED_TEST_ENG = SATED_PATH + 'test.en'
-SATED_TEST_FR = SATED_PATH + 'test.fr'
-SATED_TEST_USER = SATED_PATH + 'test.usr'
+SATED_TRAIN_ENG = f'{SATED_PATH}train.en'
+SATED_TRAIN_FR = f'{SATED_PATH}train.fr'
+SATED_TRAIN_USER = f'{SATED_PATH}train.usr'
+SATED_DEV_ENG = f'{SATED_PATH}dev.en'
+SATED_DEV_FR = f'{SATED_PATH}dev.fr'
+SATED_DEV_USER = f'{SATED_PATH}dev.usr'
+SATED_TEST_ENG = f'{SATED_PATH}test.en'
+SATED_TEST_FR = f'{SATED_PATH}test.fr'
+SATED_TEST_USER = f'{SATED_PATH}test.usr'
 # EUROPARL_PATH = '/hdd/song/nlp/europarl/'
 # EUROPARL_DEEN_DE = EUROPARL_PATH + 'europarl.de-en.de.aligned.tok'
 # EUROPARL_DEEN_EN = EUROPARL_PATH + 'europarl.de-en.en.aligned.tok'
@@ -23,8 +23,7 @@ SATED_TEST_USER = SATED_PATH + 'test.usr'
 def load_users(p=SATED_TRAIN_USER):
     users = []
     with open(p, 'r', encoding='UTF-8') as f:
-        for line in f:
-            users.append(line.replace('\n', ''))
+        users.extend(line.replace('\n', '') for line in f)
     return users
 
 
@@ -33,9 +32,7 @@ def load_texts(p=SATED_TRAIN_ENG):
     with open(p, 'r', encoding='UTF-8') as f:
         for line in f:
             arr = ['<sos>'] + line.replace('\n', '').split(' ') + ['<eos>']
-            words = []
-            for w in arr:
-                words.append(w)
+            words = list(arr)
             texts.append(words)
 
     return texts
@@ -51,7 +48,7 @@ def process_texts(texts, vocabs):
 def process_vocabs(vocabs, num_words=10000):
     counter = Counter(vocabs)
     count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
-    print('Loaded {} vocabs'.format(len(count_pairs)))
+    print(f'Loaded {len(count_pairs)} vocabs')
 
     if num_words is not None:
         count_pairs = count_pairs[:num_words - 1]
@@ -59,8 +56,7 @@ def process_vocabs(vocabs, num_words=10000):
     print(f"Count pairs (first 50): {count_pairs[:50]}".encode('UTF-8'))
 
     words, _ = list(zip(*count_pairs))
-    word_to_id = dict(zip(words, np.arange(len(words))))
-    return word_to_id
+    return dict(zip(words, np.arange(len(words))))
 
 
 def load_sated_data(num_words=10000):

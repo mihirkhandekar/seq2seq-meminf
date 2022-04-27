@@ -20,7 +20,7 @@ def preprocess_sentence(w):
 
     w = w.strip()
 
-    w = '<start> ' + w + ' <end>'
+    w = f'<start> {w} <end>'
     return w
 
 class Translate:
@@ -40,7 +40,7 @@ class Translate:
             for word in sentence:
                 if word == 0:
                     break
-                sen += self.inp_lang.index_word[word] + ' '
+                sen += f'{self.inp_lang.index_word[word]} '
             sentence = sen.split(' ', 1)[1]
             sentence = sentence.rsplit(' ', 1)[0].rsplit(' ', 1)[0]
         result, sentence, attention_plot, pred_probs = self.evaluate(
@@ -74,18 +74,18 @@ class Translate:
 
             attention_weights = tf.reshape(attention_weights, (-1, ))
             attention_plot[t] = attention_weights.numpy()
-            
+
             predicted_id = tf.argmax(predictions[0]).numpy()
             pred_probs.append(predictions[0].numpy())
-            
+
             if predicted_id:
-                result += self.targ_lang.index_word[predicted_id] + ' '
-            
+                result += f'{self.targ_lang.index_word[predicted_id]} '
+
             # finish prediction if <end> token is predicted
             # don't perform check if 0 is predicted as it's reserved for padding (word index won't have key = 0)
             if predicted_id != 0 and self.targ_lang.index_word[predicted_id] == '<end>':
                 return result, sentence, attention_plot, pred_probs
-            
+
             dec_input = tf.expand_dims([predicted_id], 0)
 
         return result, sentence, attention_plot, pred_probs

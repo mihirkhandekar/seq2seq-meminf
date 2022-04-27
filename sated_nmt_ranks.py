@@ -143,8 +143,16 @@ def get_ranks(user_src_data, user_trg_data, pred_fn, save_probs=False):
 def save_users_rank_results(users, user_src_texts, user_trg_texts, src_vocabs, trg_vocabs, prob_fn, save_dir,
                             member_label=1, cross_domain=False, save_probs=False, mask=False, rerun=False):
     for i, u in enumerate(users):
-        save_path = save_dir + 'rank_u{}_y{}{}.npz'.format(i, member_label, '_cd' if cross_domain else '')
-        prob_path = save_dir + 'prob_u{}_y{}{}.npz'.format(i, member_label, '_cd' if cross_domain else '')
+        save_path = (
+            save_dir
+            + f"rank_u{i}_y{member_label}{'_cd' if cross_domain else ''}.npz"
+        )
+
+        prob_path = (
+            save_dir
+            + f"prob_u{i}_y{member_label}{'_cd' if cross_domain else ''}.npz"
+        )
+
 
         if os.path.exists(save_path) and not save_probs and not rerun:
             continue
@@ -162,7 +170,7 @@ def save_users_rank_results(users, user_src_texts, user_trg_texts, src_vocabs, t
             np.savez(save_path, ranks, labels)
 
         if (i + 1) % 500 == 0:
-            sys.stderr.write('Finishing saving ranks for {} users'.format(i + 1))
+            sys.stderr.write(f'Finishing saving ranks for {i + 1} users')
 
 
 def histogram_feats(ranks, bins=100, num_words=5000):
@@ -172,13 +180,14 @@ def histogram_feats(ranks, bins=100, num_words=5000):
 
 def get_shadow_ranks(exp_id=0, num_users=200, num_words=5000, mask=False, h=128, emb_h=128, save_probs=False,
                      tied=False, cross_domain=False, rnn_fn='lstm', rerun=False):
-    shadow_user_path = 'shadow_users{}_{}_{}_{}.npz'.format(exp_id, rnn_fn, num_users, 'cd' if cross_domain else '')
+    shadow_user_path = f"shadow_users{exp_id}_{rnn_fn}_{num_users}_{'cd' if cross_domain else ''}.npz"
+
     shadow_train_users = np.load(MODEL_PATH + shadow_user_path)['arr_0']
     shadow_train_users = list(shadow_train_users)
 
     print(shadow_user_path)
 
-    save_dir = OUTPUT_PATH + 'shadow_exp{}_{}/'.format(exp_id, num_users)
+    save_dir = OUTPUT_PATH + f'shadow_exp{exp_id}_{num_users}/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 
@@ -190,8 +199,8 @@ def get_shadow_ranks(exp_id=0, num_users=200, num_words=5000, mask=False, h=128,
         = load_shadow_user_data(shadow_train_users, num_users, num_words)
     shadow_test_users = sorted(test_user_src_texts.keys())
 
-    model_path = '{}_shadow_exp{}_{}_{}.h5'.format('europal_nmt' if cross_domain else 'sated_nmt',
-                                                   exp_id, rnn_fn, num_users)
+    model_path = f"{'europal_nmt' if cross_domain else 'sated_nmt'}_shadow_exp{exp_id}_{rnn_fn}_{num_users}.h5"
+
 
     model = build_nmt_model(Vs=num_words, Vt=num_words, mask=mask, drop_p=0., h=h, demb=emb_h, tied=tied, rnn_fn=rnn_fn)
     model.load_weights(MODEL_PATH + model_path)
@@ -221,21 +230,25 @@ def get_target_ranks(num_users=200, num_words=5000, mask=False, h=128, emb_h=128
     train_users = sorted(user_src_texts.keys())
     test_users = sorted(test_user_src_texts.keys())
 
-    save_dir = OUTPUT_PATH + 'target_{}{}/'.format(num_users, '_dr' if 0. < user_data_ratio < 1. else '')
+    save_dir = (
+        OUTPUT_PATH
+        + f"target_{num_users}{'_dr' if 0. < user_data_ratio < 1. else ''}/"
+    )
+
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 
     model_path = 'sated_nmt'.format(num_users)
 
     if 0. < user_data_ratio < 1.:
-        model_path += '_dr{}'.format(user_data_ratio)
+        model_path += f'_dr{user_data_ratio}'
         heldout_src_texts, heldout_trg_texts = load_train_users_heldout_data(train_users, src_vocabs, trg_vocabs)
         for u in train_users:
             user_src_texts[u] += heldout_src_texts[u]
             user_trg_texts[u] += heldout_trg_texts[u]
 
     model = build_nmt_model(Vs=num_words, Vt=num_words, mask=mask, drop_p=0., h=h, demb=emb_h, tied=tied)
-    model.load_weights(MODEL_PATH + '{}_{}.h5'.format(model_path, num_users))
+    model.load_weights(MODEL_PATH + f'{model_path}_{num_users}.h5')
 
     src_input_var, trg_input_var = model.inputs
     prediction = model.output
@@ -256,33 +269,33 @@ def get_target_ranks(num_users=200, num_words=5000, mask=False, h=128, emb_h=128
 
 def ranks_to_feats(ranks, prop=1.0, dim=100, num_words=5000, shuffle=True):
     X = []
-    i = 0
     for user_ranks in ranks:
         indices = np.arange(len(user_ranks))
         if shuffle:
             np.random.shuffle(indices)
         n = int(len(indices) * prop)
-        r = []
-        for idx in indices[:n]:
-            r.append(user_ranks[idx])
+        r = [user_ranks[idx] for idx in indices[:n]]
         r = np.concatenate(r)
         # print i, np.average(r)
         feats = histogram_feats(r, bins=dim, num_words=num_words)
         X.append(feats)
-        i += 1
     # quit()
     return np.vstack(X)
 
 
 def user_mi_attack(num_exp=10, dim=100, prop=1.0, num_words=5000, cross_domain=True):
-    f = np.load(OUTPUT_PATH + 'target_user_ranks.npz')
+    f = np.load(f'{OUTPUT_PATH}target_user_ranks.npz')
     X_test = ranks_to_feats(f['arr_0'], prop=prop, dim=dim, num_words=num_words)
     y_test = f['arr_1']
 
     X = []
     y = []
     for exp_id in range(num_exp):
-        f = np.load(OUTPUT_PATH + 'shadow_user_ranks_{}{}.npz'.format(exp_id, '_cd' if cross_domain else ''))
+        f = np.load(
+            OUTPUT_PATH
+            + f"shadow_user_ranks_{exp_id}{'_cd' if cross_domain else ''}.npz"
+        )
+
         feats = ranks_to_feats(f['arr_0'], prop=prop, dim=dim, num_words=num_words)
         X.append(feats)
         y.append(f['arr_1'])

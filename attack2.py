@@ -62,10 +62,7 @@ def loss_function(real, pred):
 
 
 def translate_and_get_indices(tr, tar, pred_probs):
-    res = ''
-    for word in tar:
-        if word != 0:
-            res += targ_lang.index_word[word] + ' '
+    res = ''.join(f'{targ_lang.index_word[word]} ' for word in tar if word != 0)
     res = res.split(' ', 1)[1]
 
     ### score = sentence_bleu([tr.split()], res.split())
@@ -101,7 +98,9 @@ for m in range(NUM_SHADOW_MODELS):
     shadow_optimizer = tf.keras.optimizers.Adam()
 
     shadow_checkpoint_prefix = os.path.join(
-        shadow_checkpoint_dir + str(m), "ckptshadow"+str(m))
+        shadow_checkpoint_dir + str(m), f"ckptshadow{str(m)}"
+    )
+
 
     shadow_checkpoint = tf.train.Checkpoint(optimizer=shadow_optimizer,
                                             encoder=shadow_encoder,
